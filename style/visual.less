@@ -1,0 +1,36 @@
+svg {
+    cursor: default;
+    .target-line{
+        stroke: var(--default-color);
+        stroke-width: var(--line-width);
+    }
+    .target-label{
+        alignment-baseline: middle;
+    }
+    .data-point{
+        stroke: var(--default-color);
+        stroke-width: var(--line-width);
+        .connector{
+            stroke: var(--default-color);
+            stroke-width: var(--line-width);
+        }
+        .category-label{
+            alignment-baseline: middle;
+            text-anchor: middle;
+            font-family: var(--font-family);
+            font-size: var(--font-size);
+            stroke: none;
+
+        }
+        
+    }
+    .selected{
+        fill-opacity: 1;
+        stroke-opacity: 1
+    }
+    .unselected{
+        fill-opacity: 0.5;
+        stroke-opacity: 0.5
+    }
+    
+}
