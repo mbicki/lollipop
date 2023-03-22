@@ -48,6 +48,8 @@ import { Selection, select, selectAll } from "d3-selection";
 import { easeLinear, transition, range, easeBounce, easeBack, easeQuadInOut, easeQuadIn, easePolyInOut } from "d3";
 import { dataViewWildcard } from "powerbi-visuals-utils-dataviewutils";
 import VisualEnumerationInstanceKinds = powerbi.VisualEnumerationInstanceKinds;
+import { FormattingSettingsService } from "powerbi-visuals-utils-formattingmodel";
+
 export class Visual implements IVisual {
     private target: HTMLElement;
     private settings: VisualSettings;
@@ -60,8 +62,10 @@ export class Visual implements IVisual {
     private transition: d3.Transition<any, any, any, any>
     private host: IVisualHost
     private groupPoints: Selection<SVGElement, any, any, any> 
+    private formattingSettingsService: FormattingSettingsService;
 
     constructor(options: VisualConstructorOptions) {
+        this.formattingSettingsService = new FormattingSettingsService();
         console.log('Visual constructor', options);
         this.target = options.element;
         this.host = options.host;
@@ -74,14 +78,14 @@ export class Visual implements IVisual {
     }
 
     public update(options: VisualUpdateOptions) {
-        
-        
-        this.settings = Visual.parseSettings(options && options.dataViews && options.dataViews[0]);
-        console.log('Visual update', options);
-        this.data = transformData(options, this.host, this.settings.lollipopSettings.dataPointColor);
-        console.log(this.data);
-
+        this.settings = this.formattingSettingsService.populateFormattingSettingsModel(VisualSettings, options.dataViews);
         setStyle(this.settings);
+        //this.settings = Visual.parseSettings(options && options.dataViews && options.dataViews[0]);
+        console.log('Visual update', options);
+        console.log('dataPointColor', this.settings.lollipopSettings.dataPointColor.value.value);
+        this.data = transformData(options, this.host, this.settings.lollipopSettings.dataPointColor.value.value);
+
+        
         this.dim = [options.viewport.width, options.viewport.height]
         this.svg.attr('width', this.dim[0]);
         this.svg.attr('height', this.dim[1]);
@@ -91,22 +95,22 @@ export class Visual implements IVisual {
 
         this.scaleX = scalePoint()
             .domain(Array.from(this.data.items, d => d.category))
-            .range([0, this.dim[0] - targetLabelWidth - this.settings.lollipopSettings.fontSize / 2])
+            .range([0, this.dim[0] - targetLabelWidth - this.settings.lollipopSettings.font.fontSize.value / 2])
             .padding(0.5)
 
-        const strokeGap = this.settings.lollipopSettings.lineWidth
+        const strokeGap = this.settings.lollipopSettings.lineWidth.value
 
         const allValuesAboveTarget = this.data.minValue > this.data.target
         const allValuesBelowTarget = this.data.maxValue< this.data.target
-        const gap = this.settings.lollipopSettings.fontSize * 1.5
+        const gap = this.settings.lollipopSettings.font.fontSize.value * 1.5
         const bottomOffset = (allValuesAboveTarget)? gap:0
         const topOffset = (allValuesBelowTarget)? gap:0
 
         this.scaleY = scaleLinear()
             .domain([this.data.minValue, this.data.maxValue])
             .range(
-                [this.dim[1] - this.settings.lollipopSettings.radius - strokeGap -gap,
-                this.settings.lollipopSettings.radius + strokeGap])
+                [this.dim[1] - this.settings.lollipopSettings.radius.value - strokeGap -gap,
+                this.settings.lollipopSettings.radius.value + strokeGap])
 
         this.transition = transition().duration(500).ease(easePolyInOut)
 
@@ -146,18 +150,18 @@ export class Visual implements IVisual {
             .enter()
             .append('text')
             .classed('target-label', true)
-            .attr('x', this.scaleX.range()[1] + this.settings.lollipopSettings.fontSize / 2)
+            .attr('x', this.scaleX.range()[1] + this.settings.lollipopSettings.font.fontSize.value / 2)
             .attr('y', this.scaleY(this.data.target))
-            .attr('font-size', `${this.settings.lollipopSettings.fontSize}pt`)
-            .attr('font-family', this.settings.lollipopSettings.fontFamily)
+            .attr('font-size', `${this.settings.lollipopSettings.font.fontSize.value}pt`)
+            .attr('font-family', this.settings.lollipopSettings.font.fontFamily.value)
             .text(this.formatMeasure(this.data.target, this.data.formatString))
 
         targetLabel
             .transition(this.transition)
-            .attr('x', this.scaleX.range()[1] + this.settings.lollipopSettings.fontSize / 2)
+            .attr('x', this.scaleX.range()[1] + this.settings.lollipopSettings.font.fontSize.value / 2)
             .attr('y', this.scaleY(this.data.target))
-            .attr('font-size', `${this.settings.lollipopSettings.fontSize}pt`)
-            .attr('font-family', this.settings.lollipopSettings.fontFamily)
+            .attr('font-size', `${this.settings.lollipopSettings.font.fontSize.value}pt`)
+            .attr('font-family', this.settings.lollipopSettings.font.fontFamily.value)
             .text(this.formatMeasure(this.data.target, this.data.formatString))
 
         targetLabel.exit().remove();
@@ -231,7 +235,7 @@ export class Visual implements IVisual {
                         .attr('fill', d => d.color)
                         .transition(this.transition)
                         .attr('cy', d => this.scaleY(d.value))
-                        .attr('r', this.settings.lollipopSettings.radius)
+                        .attr('r', this.settings.lollipopSettings.radius.value)
                     g.append('line')
                         .classed('connector', true)
                         .attr('ix', (d, i) => i)
@@ -241,7 +245,7 @@ export class Visual implements IVisual {
                         .attr('y2', this.scaleY(this.data.target))
                         .transition(this.transition)
                         .attr('y2', (d) => {
-                            var spacing = this.settings.lollipopSettings.radius;
+                            var spacing = this.settings.lollipopSettings.radius.value;
                             spacing = (this.data.target <= d.value) ? spacing : -spacing;
                             return this.scaleY(d.value) + spacing
                         })
@@ -251,7 +255,7 @@ export class Visual implements IVisual {
                         .classed('category-label', true)
                         .attr('x', d => this.scaleX(d.category))
                         .attr('y', d => {
-                            var gap = this.settings.lollipopSettings.fontSize * 1.5
+                            var gap = this.settings.lollipopSettings.font.fontSize.value * 1.5
                             gap = (d.value >= this.data.target) ? gap : -gap
                             return this.scaleY(this.data.target) + gap
                         })
@@ -269,7 +273,7 @@ export class Visual implements IVisual {
                     update.select('circle').transition(this.transition)
                         .attr('cx', d => this.scaleX(d.category))
                         .attr('cy', d => this.scaleY(d.value))
-                        .attr('r', this.settings.lollipopSettings.radius)
+                        .attr('r', this.settings.lollipopSettings.radius.value)
                         .attr('fill', d => d.color)
                     update.select('.connector').transition(this.transition)
                         .attr('ix', (d, i) => i)
@@ -277,14 +281,14 @@ export class Visual implements IVisual {
                         .attr('x2', d => this.scaleX(d.category))
                         .attr('y1', this.scaleY(this.data.target))
                         .attr('y2', (d) => {
-                            var spacing = this.settings.lollipopSettings.radius;
+                            var spacing = this.settings.lollipopSettings.radius.value;
                             spacing = (this.data.target <= d.value) ? spacing : -spacing;
                             return this.scaleY(d.value) + spacing
                         })
                     update.transition(this.transition).select('text.category-label')
                         .attr('x', d => this.scaleX(d.category))
                         .attr('y', d => {
-                            var gap = this.settings.lollipopSettings.fontSize * 1.5
+                            var gap = this.settings.lollipopSettings.font.fontSize.value * 1.5
                             gap = (d.value >= this.data.target) ? gap : -gap
                             return this.scaleY(this.data.target) + gap
                         })
@@ -299,7 +303,9 @@ export class Visual implements IVisual {
         dataPoints.exit().remove();
     }
 
-
+    public getFormattingModel(): powerbi.visuals.FormattingModel {
+        return this.formattingSettingsService.buildFormattingModel(this.settings);
+    }
     private drawCategoryLabels() {
         const catLabels = this.svg.selectAll('text.category-label').data(this.data.items)
 
@@ -309,7 +315,7 @@ export class Visual implements IVisual {
             .classed('category-label', true)
             .attr('x', d => this.scaleX(d.category))
             .attr('y', d => {
-                var gap = this.settings.lollipopSettings.fontSize * 1.5
+                var gap = this.settings.lollipopSettings.font.fontSize.value * 1.5
                 gap = (d.value >= this.data.target) ? gap : -gap
                 return this.scaleY(this.data.target) + gap
             })
@@ -319,7 +325,7 @@ export class Visual implements IVisual {
             .transition(this.transition)
             .attr('x', d => this.scaleX(d.category))
             .attr('y', d => {
-                var gap = this.settings.lollipopSettings.fontSize * 1.5
+                var gap = this.settings.lollipopSettings.font.fontSize.value * 1.5
                 gap = (d.value >= this.data.target) ? gap : -gap
                 return this.scaleY(this.data.target) + gap
             })
@@ -328,9 +334,9 @@ export class Visual implements IVisual {
         catLabels.exit().remove();
     }
 
-    private static parseSettings(dataView: DataView): VisualSettings {
-        return <VisualSettings>VisualSettings.parse(dataView);
-    }
+    // private static parseSettings(dataView: DataView): VisualSettings {
+    //     return <VisualSettings>VisualSettings.parse(dataView);
+    // }
 
     private formatMeasure(measure: number, fs: string): string {
         const formatter = valueFormatter.create({ format: fs })
@@ -340,8 +346,8 @@ export class Visual implements IVisual {
     private getTextWidth(txt: string): number {
         const textProperties = {
             text: txt,
-            fontFamily: this.settings.lollipopSettings.fontFamily,
-            fontSize: `${this.settings.lollipopSettings.fontSize}pt`
+            fontFamily: this.settings.lollipopSettings.font.fontFamily.value,
+            fontSize: `${this.settings.lollipopSettings.font.fontSize.value}pt`
         }
         return measureSvgTextWidth(textProperties)
     }
@@ -351,42 +357,42 @@ export class Visual implements IVisual {
      * objects and properties you want to expose to the users in the property pane.
      *
      */
-    public enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): VisualObjectInstance[] | VisualObjectInstanceEnumerationObject {
-        const objectName: string = options.objectName;
-        const objectEnumeration: VisualObjectInstance[] = []
+    // public enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): VisualObjectInstance[] | VisualObjectInstanceEnumerationObject {
+    //     const objectName: string = options.objectName;
+    //     const objectEnumeration: VisualObjectInstance[] = []
 
-        switch (objectName) {
-            case 'lollipopSettings':
+    //     switch (objectName) {
+    //         case 'lollipopSettings':
 
-                objectEnumeration.push(
-                    {
-                        objectName,
-                        properties: {
-                            dataPointColor: this.settings.lollipopSettings.dataPointColor
-                        },
-                        selector: dataViewWildcard.createDataViewWildcardSelector(dataViewWildcard.DataViewWildcardMatchingOption.InstancesAndTotals),
-                        altConstantValueSelector: this.settings.lollipopSettings.dataPointColor,
-                        propertyInstanceKind: { dataPointColor: VisualEnumerationInstanceKinds.ConstantOrRule }
-                    }
-                )
-                objectEnumeration.push(
-                    {
-                        objectName,
-                        properties: {
-                            defaultColor: this.settings.lollipopSettings.defaultColor,
-                            fontFamily: this.settings.lollipopSettings.fontFamily,
-                            fontSize: this.settings.lollipopSettings.fontSize,
-                            lineWidth: this.settings.lollipopSettings.lineWidth,
-                            radius: this.settings.lollipopSettings.radius
-                        },
-                        selector: null
-                    }
-                )
-                break
-        }
+    //             objectEnumeration.push(
+    //                 {
+    //                     objectName,
+    //                     properties: {
+    //                         dataPointColor: this.settings.lollipopSettings.dataPointColor
+    //                     },
+    //                     selector: dataViewWildcard.createDataViewWildcardSelector(dataViewWildcard.DataViewWildcardMatchingOption.InstancesAndTotals),
+    //                     altConstantValueSelector: this.settings.lollipopSettings.dataPointColor,
+    //                     propertyInstanceKind: { dataPointColor: VisualEnumerationInstanceKinds.ConstantOrRule }
+    //                 }
+    //             )
+    //             objectEnumeration.push(
+    //                 {
+    //                     objectName,
+    //                     properties: {
+    //                         defaultColor: this.settings.lollipopSettings.defaultColor,
+    //                         fontFamily: this.settings.lollipopSettings.font.fontFamily,
+    //                         fontSize: this.settings.lollipopSettings.font.fontSize,
+    //                         lineWidth: this.settings.lollipopSettings.lineWidth,
+    //                         radius: this.settings.lollipopSettings.radius
+    //                     },
+    //                     selector: null
+    //                 }
+    //             )
+    //             break
+    //     }
 
-        // return VisualSettings.enumerateObjectInstances(this.settings || VisualSettings.getDefault(), options);
-        return objectEnumeration
+    //     // return VisualSettings.enumerateObjectInstances(this.settings || VisualSettings.getDefault(), options);
+    //     return objectEnumeration
 
-    }
+    // }
 }

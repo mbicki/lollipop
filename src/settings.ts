@@ -26,21 +26,88 @@
 
 "use strict";
 
+import { formattingSettings } from "powerbi-visuals-utils-formattingmodel";
+
+import FormattingSettingsCard = formattingSettings.Card;
+import FormattingSettingsSlice = formattingSettings.Slice;
+import FormattingSettingsModel = formattingSettings.Model;
+
 import { dataViewObjectsParser } from "powerbi-visuals-utils-dataviewutils";
 import DataViewObjectsParser = dataViewObjectsParser.DataViewObjectsParser;
 
-export class VisualSettings extends DataViewObjectsParser {
-      public lollipopSettings: LollipopSettings = new LollipopSettings();
-      }
+export class VisualSettingsOld extends DataViewObjectsParser {
+    public lollipopSettings: LollipopSettings = new LollipopSettings();
+}
 
-    export class LollipopSettings {
-     // Default color
-      public defaultColor: string = "#202020";
-      public dataPointColor: string = "#B6960B";
-      public radius: number = 10; 
-      public lineWidth: number = 3; 
-     // Text Size
-      public fontSize: number = 12;
-      public fontFamily: string = "Arial, sans-serif"
-     }
+export class LollipopSettingsOld {
+    // Default color
+    public defaultColor: string = "#202020";
+    public dataPointColor: string = "#B6960B";
+    public radius: number = 10;
+    public lineWidth: number = 3;
+    // Text Size
+    public fontSize: number = 12;
+    public fontFamily: string = "Arial, sans-serif"
+}
 
+class LollipopSettings extends FormattingSettingsCard {
+    defaultColor = new formattingSettings.ColorPicker({
+        name: "defaultColor",
+        displayName: "Default color",
+        value: { value: "#202020" }
+    });
+
+    dataPointColor = new formattingSettings.ColorPicker({
+        name: "dataPointColor",
+        displayName: "Data Point Color",
+        value: { value: "#B6960B" }
+    });
+
+    radius = new formattingSettings.Slider({
+        name: "radius",
+        displayName: "Radius",
+        value: 10
+    });
+
+    lineWidth = new formattingSettings.NumUpDown({
+        name: "lineWidth",
+        displayName: "Line Width",
+        value: 3
+    });
+
+    fontSize = new formattingSettings.NumUpDown({
+        name: "fontSize",
+        displayName: "Text Size",
+        value: 12
+    });
+
+    font = new formattingSettings.FontControl(
+        {
+            name: "font",
+            displayName: "Font",
+            fontFamily: new formattingSettings.FontPicker({
+                name: "fontFamily",
+                value: "Arial, sans-serif"
+            }),
+            fontSize: new formattingSettings.NumUpDown({
+                name: "fontSize",
+                value: 12
+            })
+        }
+    );
+
+    name: string = "lollipopSettings";
+    displayName: string = "Lollipop Settigngs";
+    slices: Array<FormattingSettingsSlice> = [this.defaultColor, this.dataPointColor, this.radius, this.lineWidth, this.fontSize, this.font];
+}
+
+/**
+* visual settings model class
+*
+*/
+export class VisualSettings extends FormattingSettingsModel {
+    // Create formatting settings model formatting cards
+    lollipopSettings = new LollipopSettings();
+
+    cards = [this.lollipopSettings];
+}

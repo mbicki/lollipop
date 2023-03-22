@@ -27,16 +27,17 @@ export function transformData(option: VisualUpdateOptions, host: IVisualHost, de
     try {
       const dv = option.dataViews[0].categorical
       //const minValue = Math.min(<number>dv.values[0].minLocal, <number>dv.values[1].minLocal||<number>dv.values[0].minLocal)
-      console.log(dv.values);
-      const minValue = Math.min(...<number[]>Array.from(dv.values, d => <number>d.minLocal))
+      console.log({dvvalues: dv.values});
+      const target = (dv.values[1])? <number>dv.values[1].maxLocal :0 ;
+      const minValue = Math.min(<number>dv.values[0].minLocal, target)
       //const maxValue = Math.max(<number>dv.values[0].maxLocal, <number>dv.values[1].maxLocal)
-      const maxValue = Math.max(...<number[]>Array.from(dv.values, d => <number>d.maxLocal))
-      const target = (dv.values[1])? <number>dv.values[1].values[0] :0 ;
+      const maxValue = Math.max(<number>dv.values[0].maxLocal, target)
+      
       const items: VDataItem[] = [];
       let color: string;
       for (let i=0; i < dv.categories[0].values.length; i++) {
         try {
-          color = dv.categories[0].objects[i].lollipopSettings.dataPointColor['solid'].color
+          color = dv.categories[0].objects[i].lollipopSettings.dataPointColor['solid'].dataPointColor
         }
         catch(error){
           color = defaultColor
